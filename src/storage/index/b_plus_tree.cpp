@@ -429,7 +429,11 @@ bool BPLUSTREE_TYPE::AdjustRoot(BPlusTreePage *old_root_node) {
  * @return : index iterator
  */
 INDEX_TEMPLATE_ARGUMENTS
-INDEXITERATOR_TYPE BPLUSTREE_TYPE::begin() { return INDEXITERATOR_TYPE(); }
+INDEXITERATOR_TYPE BPLUSTREE_TYPE::begin() {
+  auto leftmost_page = FindLeafPage(KeyType(), true);
+  LeafPage *leaf_node = reinterpret_cast<LeafPage *>(leftmost_page->GetData());
+  return INDEXITERATOR_TYPE(buffer_pool_manager_, leaf_node, 0);
+}
 
 /*
  * Input parameter is low key, find the leaf page that contains the input key
@@ -437,7 +441,12 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::begin() { return INDEXITERATOR_TYPE(); }
  * @return : index iterator
  */
 INDEX_TEMPLATE_ARGUMENTS
-INDEXITERATOR_TYPE BPLUSTREE_TYPE::Begin(const KeyType &key) { return INDEXITERATOR_TYPE(); }
+INDEXITERATOR_TYPE BPLUSTREE_TYPE::Begin(const KeyType &key) {
+  auto leaf_page = FindLeafPage(key);
+  LeafPage *leaf_node = reinterpret_cast<LeafPage *>(leaf_page->GetData());
+  auto idx = leaf_node->KeyIndex(key, comparator_);
+  return INDEXITERATOR_TYPE(buffer_pool_manager_, leaf_node, idx);
+}
 
 /*
  * Input parameter is void, construct an index iterator representing the end
@@ -445,8 +454,11 @@ INDEXITERATOR_TYPE BPLUSTREE_TYPE::Begin(const KeyType &key) { return INDEXITERA
  * @return : index iterator
  */
 INDEX_TEMPLATE_ARGUMENTS
-INDEXITERATOR_TYPE BPLUSTREE_TYPE::end() { return INDEXITERATOR_TYPE(); }
-
+INDEXITERATOR_TYPE BPLUSTREE_TYPE::end() {
+  auto rightmost_page = FindLeafPage(KeyType(), false, true);
+  LeafPage *leaf_node = reinterpret_cast<LeafPage *>(rightmost_page->GetData());
+  return INDEXITERATOR_TYPE(buffer_pool_manager_, leaf_node, leaf_node->GetSize());
+}
 /*****************************************************************************
  * UTILITIES AND DEBUG
  *****************************************************************************/
@@ -465,6 +477,8 @@ Page *BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, bool leftMost) {
 
     if(leftMost) {
       next_page_id = internal_node->ValueAt(0);
+    } else if {
+      next_page_id = internal_node->ValueAt(internal_node->GetSize() - 1);
     } else {
       next_page_id = internal_node->Lookup(key,comparator_);
     }
